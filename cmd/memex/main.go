@@ -46,4 +46,6 @@ func main() {
 			err,
 		)
 	}
+
+	fmt.Println("memex: converted", len(inputs), "files")
 }
