@@ -1,7 +1,9 @@
 package redact
 
 import (
+	"bufio"
 	"bytes"
+	"os"
 	"regexp"
 	"strings"
 	"unicode"
@@ -14,35 +16,15 @@ var redactExp = regexp.MustCompile(`(?s)REDACT(.*(?:UNREDACT)|.*)`)
 //
 // Some specific file paths (the whole log folder for example) "default" to
 // being redacted. That just means we prepend the REDACT keyword on those files.
-func Redact(path string, s []byte) []byte {
-	if hidden(path) {
+func Redact(path string, s []byte, denylist []string) []byte {
+	if hidden(path, denylist) {
 		s = append([]byte("REDACT\n"), s...)
 	}
 	return redactExp.ReplaceAllFunc(s, Blackout)
 }
 
 // hidden returns whether or not a path should be redacted by default.
-func hidden(path string) bool {
-	denylist := []string{
-		"kota.md",
-		"jazzi.md",
-		"mom.md",
-		"brian.md",
-		"paul.md",
-		"kyrin.md",
-		"max.md",
-		"leon.md",
-		"mary.md",
-		"nik.md",
-		"henry.md",
-		"amanda.md",
-		"matthew.md",
-		"lucas.md",
-		"portainer",
-		"todo",
-		"log",
-		"/journal/",
-	}
+func hidden(path string, denylist []string) bool {
 	for _, v := range denylist {
 		if strings.Contains(path, v) {
 			return true
@@ -62,4 +44,24 @@ func Blackout(s []byte) []byte {
 		}
 	}
 	return buf.Bytes()
+}
+
+func Load(path string) ([]string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var denylist []string
+	scanner := bufio.NewScanner(file)
+	// optionally, resize scanner's capacity for lines over 64K, see next example
+	for scanner.Scan() {
+		denylist = append(denylist, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return denylist, nil
 }

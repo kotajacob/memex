@@ -27,9 +27,10 @@ type Page struct {
 
 // Converter holds all the information needed to convert a list of input files.
 type Converter struct {
-	Inputs []string
-	InDir  string
-	OutDir string
+	Inputs     []string
+	InDir      string
+	OutDir     string
+	Redactions []string
 }
 
 // All processes a list of input files, cleaning up and converting each one to
@@ -76,7 +77,7 @@ func (c Converter) markdown(input string, inputSet map[string]struct{}) error {
 	}
 
 	// Make a few modifications.
-	data = redact.Redact(input, data)
+	data = redact.Redact(input, data, c.Redactions)
 	data = links.Modify(data, inputSet)
 
 	// Convert to html.

@@ -51,7 +51,7 @@ func TestReplace(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		got := Redact("", tc.input)
+		got := Redact("", tc.input, []string{})
 		if !reflect.DeepEqual(tc.want, got) {
 			t.Fatalf("expected: %s, got: %s", tc.want, got)
 		}

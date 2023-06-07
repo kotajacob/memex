@@ -3,8 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"git.sr.ht/~kota/memex/convert"
+	"git.sr.ht/~kota/memex/redact"
 	"git.sr.ht/~kota/memex/static"
 )
 
@@ -29,10 +31,20 @@ func main() {
 		)
 	}
 
+	denylist, err := redact.Load(filepath.Join(inDir, "denylist.md"))
+	if err != nil {
+		fmt.Fprintf(
+			os.Stderr,
+			"failed while loading denylist %s: %v\n",
+			filepath.Join(inDir, "denylist.md"),
+			err,
+		)
+	}
 	c := convert.Converter{
-		Inputs: inputs,
-		InDir:  inDir,
-		OutDir: outDir,
+		Inputs:     inputs,
+		InDir:      inDir,
+		OutDir:     outDir,
+		Redactions: denylist,
 	}
 	err = c.All()
 	if err != nil {
