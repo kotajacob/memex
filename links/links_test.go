@@ -1,4 +1,4 @@
-package wiki
+package links
 
 import (
 	"testing"
@@ -16,6 +16,18 @@ func TestReplaceLinks(t *testing.T) {
 		{
 			input: "[[basic]]",
 			want:  "[basic](basic.html)",
+		},
+		{
+			input: "![[basic_image.jpg]]",
+			want:  "![basic_image.jpg](basic_image.jpg)",
+		},
+		{
+			input: "![not_an_image.jpg]]",
+			want:  "![not_an_image.jpg]]",
+		},
+		{
+			input: "! [[not_an_image.jpg]]",
+			want:  "! [not_an_image.jpg](not_an_image.jpg.html)",
 		},
 		{
 			input: "This string says [[hello]]!\nHere's a second line!",
@@ -55,7 +67,7 @@ func TestReplaceLinks(t *testing.T) {
 		},
 		{
 			input: "[[]]",
-			want:  "[](.html)",
+			want:  "[[]]",
 		},
 		{
 			input: "",
@@ -67,8 +79,9 @@ func TestReplaceLinks(t *testing.T) {
 		},
 	}
 
+	inputSet := make(map[string]struct{})
 	for _, tc := range tests {
-		got := ReplaceLinks([]byte(tc.input))
+		got := Modify([]byte(tc.input), inputSet)
 		assert.Equal(t, tc.want, string(got))
 	}
 }

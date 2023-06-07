@@ -8,11 +8,10 @@ import (
 	"strings"
 	"text/template"
 
-	"git.sr.ht/~kota/memex/journal"
+	"git.sr.ht/~kota/memex/links"
 	"git.sr.ht/~kota/memex/normalize"
 	"git.sr.ht/~kota/memex/redact"
 	"git.sr.ht/~kota/memex/ui"
-	"git.sr.ht/~kota/memex/wiki"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 )
@@ -27,8 +26,15 @@ type Page struct {
 // each filepath is replaced with outDir; so subdirectory structures remain
 // unchanged.
 func All(inputs []string, inDir, outDir string) error {
+	inputSet := make(map[string]struct{})
 	for _, input := range inputs {
-		err := convert(input, inDir, outDir)
+		name := strings.TrimPrefix(input, inDir+"/")
+		name = strings.TrimSuffix(name, ".md")
+		inputSet[name] = struct{}{}
+	}
+
+	for _, input := range inputs {
+		err := convert(input, inDir, outDir, inputSet)
 		if err != nil {
 			return err
 		}
@@ -38,28 +44,25 @@ func All(inputs []string, inDir, outDir string) error {
 
 // convert will do any needed processing to a source file and then write it to
 // the outDir.
-func convert(input, inDir, outDir string) error {
+func convert(input, inDir, outDir string, inputSet map[string]struct{}) error {
 	if !strings.HasSuffix(input, ".md") {
 		if err := media(input, inDir, outDir); err != nil {
 			return err
 		}
 		return nil
 	}
-	return markdown(input, inDir, outDir)
+	return markdown(input, inDir, outDir, inputSet)
 }
 
-func markdown(input, inDir, outDir string) error {
+func markdown(input, inDir, outDir string, inputSet map[string]struct{}) error {
 	data, err := os.ReadFile(input)
 	if err != nil {
 		return err
 	}
 
-	// Redact some naughty stuff :P
+	// Make a few modifications.
 	data = redact.Redact(input, data)
-
-	// Replace certain wiki-specific links with markdown links.
-	data = wiki.ReplaceLinks(data)
-	data = journal.ReplaceLinks(data)
+	data = links.Modify(data, inputSet)
 
 	// Convert to html.
 	md := goldmark.New(
