@@ -19,7 +19,7 @@ var matchLinks = regexp.MustCompile(`(?U)!?\[.+\]\(.+\)|!?\[\[.+\]\]`)
 // Normally, the link text and link destination are the same, but they can be
 // specified separately using the pipe character like so: [[destination|label]].
 //
-// 2. All non-image links have .html appended to the destination.
+// 2. All non-image wiki style links have .html appended to the destination.
 //
 // A link may be prefixed with ! to indicate it is an image.
 func Modify(s []byte, inputSet map[string]struct{}) []byte {
@@ -32,6 +32,13 @@ func Modify(s []byte, inputSet map[string]struct{}) []byte {
 type modifier struct {
 	has map[string]struct{}
 }
+
+type linkForm uint8
+
+const (
+	wikiLink linkForm = iota
+	mdLink
+)
 
 func (m modifier) replace(src []byte) []byte {
 	if len(src) < 4 {
@@ -49,7 +56,9 @@ func (m modifier) replace(src []byte) []byte {
 
 	// Parse wiki or markdown style links.
 	var label []byte
+	var form linkForm
 	if bytes.HasPrefix(dest, []byte("[[")) {
+		form = wikiLink
 		dest = bytes.TrimPrefix(dest, []byte("[["))
 		dest = bytes.TrimSuffix(dest, []byte("]]"))
 
@@ -65,6 +74,7 @@ func (m modifier) replace(src []byte) []byte {
 			return dest
 		}
 	} else {
+		form = mdLink
 		dest = bytes.TrimPrefix(dest, []byte("["))
 		dest = bytes.TrimSuffix(dest, []byte(")"))
 
@@ -85,7 +95,7 @@ func (m modifier) replace(src []byte) []byte {
 	buf.WriteRune(']')
 	buf.WriteRune('(')
 	buf.Write(normalize.Bytes(dest))
-	if !image {
+	if !image && form == wikiLink {
 		buf.WriteString(".html")
 	}
 	buf.WriteRune(')')
