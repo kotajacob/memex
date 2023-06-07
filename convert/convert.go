@@ -16,25 +16,39 @@ import (
 	"github.com/yuin/goldmark/extension"
 )
 
+// Page holds the information needed to render an individual page.
 type Page struct {
+	// Filename is the name without an extension or full path.
 	Filename string
-	Content  string
+
+	// Content is the HTML content to place in the page.
+	Content string
+}
+
+// Converter holds all the information needed to convert a list of input files.
+type Converter struct {
+	Inputs []string
+	InDir  string
+	OutDir string
 }
 
 // All processes a list of input files, cleaning up and converting each one to
 // html and writing the final output into the outDir. The inDir portion of
 // each filepath is replaced with outDir; so subdirectory structures remain
 // unchanged.
-func All(inputs []string, inDir, outDir string) error {
+func (c Converter) All() error {
 	inputSet := make(map[string]struct{})
-	for _, input := range inputs {
-		name := strings.TrimPrefix(input, inDir+"/")
-		name = strings.TrimSuffix(name, ".md")
+	for _, input := range c.Inputs {
+		if !strings.HasSuffix(input, ".md") {
+			continue
+		}
+		name := strings.TrimSuffix(input, ".md")
+		name = strings.TrimPrefix(name, c.InDir+"/")
 		inputSet[name] = struct{}{}
 	}
 
-	for _, input := range inputs {
-		err := convert(input, inDir, outDir, inputSet)
+	for _, input := range c.Inputs {
+		err := c.convert(input, inputSet)
 		if err != nil {
 			return err
 		}
@@ -44,17 +58,18 @@ func All(inputs []string, inDir, outDir string) error {
 
 // convert will do any needed processing to a source file and then write it to
 // the outDir.
-func convert(input, inDir, outDir string, inputSet map[string]struct{}) error {
+func (c Converter) convert(input string, inputSet map[string]struct{}) error {
 	if !strings.HasSuffix(input, ".md") {
-		if err := media(input, inDir, outDir); err != nil {
+		if err := c.media(input); err != nil {
 			return err
 		}
 		return nil
 	}
-	return markdown(input, inDir, outDir, inputSet)
+	return c.markdown(input, inputSet)
 }
 
-func markdown(input, inDir, outDir string, inputSet map[string]struct{}) error {
+// markdown handles the conversion and writing of a markdown file.
+func (c Converter) markdown(input string, inputSet map[string]struct{}) error {
 	data, err := os.ReadFile(input)
 	if err != nil {
 		return err
@@ -98,8 +113,8 @@ func markdown(input, inDir, outDir string, inputSet map[string]struct{}) error {
 	data = buf.Bytes()
 
 	// Write file.
-	path := strings.TrimPrefix(input, inDir)
-	path = filepath.Join(outDir, path)
+	path := strings.TrimPrefix(input, c.InDir)
+	path = filepath.Join(c.OutDir, path)
 	path = strings.TrimSuffix(path, ".md")
 	path = normalize.String(path) + ".html"
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -109,14 +124,14 @@ func markdown(input, inDir, outDir string, inputSet map[string]struct{}) error {
 }
 
 // media copies a media file from inDir to the outDir.
-func media(input, inDir, outDir string) error {
+func (c Converter) media(input string) error {
 	data, err := os.ReadFile(input)
 	if err != nil {
 		return err
 	}
 
-	path := strings.TrimPrefix(input, inDir)
-	path = filepath.Join(outDir, path)
+	path := strings.TrimPrefix(input, c.InDir)
+	path = filepath.Join(c.OutDir, path)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}

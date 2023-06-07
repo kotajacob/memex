@@ -29,7 +29,12 @@ func main() {
 		)
 	}
 
-	err = convert.All(inputs, inDir, outDir)
+	c := convert.Converter{
+		Inputs: inputs,
+		InDir:  inDir,
+		OutDir: outDir,
+	}
+	err = c.All()
 	if err != nil {
 		fmt.Fprintf(
 			os.Stderr,
