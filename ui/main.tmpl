@@ -22,6 +22,7 @@
 	}
 
 	:root {
+		--measure: 65ch;
 		--ratio: 1.5;
 		--s-5: calc(var(--s-4) / var(--ratio));
 		--s-4: calc(var(--s-3) / var(--ratio));
@@ -73,11 +74,19 @@
 		outline: var(--s-4) solid;
 	}
 
+	nav {
+		font-style: italic;
+		text-align: center;
+		max-width: var(--measure);
+		margin: auto;
+		margin-block-end: var(--s2);
+	}
+
 	article {
 		display: flex;
 		flex-direction: column;
 		justify-content: flex-start;
-		max-width: 65ch;
+		max-width: var(--measure);
 		margin: auto;
 	}
 
@@ -190,6 +199,14 @@
 	<a href="/">kota's <em class="red">“</em>memex<em class="red">”</em></a>
 </header>
 <main>
+	<nav>
+	{{ if ne .Filename "index" }}{{ .Filename }}{{ end }}
+	{{ if .From }}
+		<
+		{{ range $i, $v := .From }}{{ if $i }},{{ end }}
+			<a href="/{{ $v }}.html">{{ $v }}</a>{{ end }}
+	{{ end }}
+	</nav>
 	<article>
 		{{.Content}}
 	</article>

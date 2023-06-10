@@ -23,6 +23,9 @@ type Page struct {
 
 	// Content is the HTML content to place in the page.
 	Content string
+
+	// From is a list of other pages that link to this page.
+	From []string
 }
 
 // Converter holds all the information needed to convert a list of input files.
@@ -38,18 +41,35 @@ type Converter struct {
 // each filepath is replaced with outDir; so subdirectory structures remain
 // unchanged.
 func (c Converter) All() error {
-	inputSet := make(map[string]struct{})
+	// Filter a list of markdown files.
+	var markdowns []string
+
+	// We need to create a linkMap which maps each page to a list of other
+	// pages which link to it. First we can simply populate the map with all
+	// the names of the markdown pages.
+	linkMap := make(map[string][]string)
 	for _, input := range c.Inputs {
 		if !strings.HasSuffix(input, ".md") {
 			continue
 		}
-		name := strings.TrimSuffix(input, ".md")
-		name = strings.TrimPrefix(name, c.InDir+"/")
-		inputSet[name] = struct{}{}
+
+		markdowns = append(markdowns, input)
+		linkMap[toName(input, c.InDir)] = []string{}
+	}
+
+	// Populate the linkMap by writing a list of other pages that link to each
+	// page.
+	for _, input := range markdowns {
+		data, err := os.ReadFile(input)
+		if err != nil {
+			return err
+		}
+
+		linkMap = links.Map(data, toName(input, c.InDir), linkMap)
 	}
 
 	for _, input := range c.Inputs {
-		err := c.convert(input, inputSet)
+		err := c.convert(input, linkMap)
 		if err != nil {
 			return err
 		}
@@ -59,18 +79,18 @@ func (c Converter) All() error {
 
 // convert will do any needed processing to a source file and then write it to
 // the outDir.
-func (c Converter) convert(input string, inputSet map[string]struct{}) error {
+func (c Converter) convert(input string, linkMap map[string][]string) error {
 	if !strings.HasSuffix(input, ".md") {
 		if err := c.media(input); err != nil {
 			return err
 		}
 		return nil
 	}
-	return c.markdown(input, inputSet)
+	return c.markdown(input, linkMap)
 }
 
 // markdown handles the conversion and writing of a markdown file.
-func (c Converter) markdown(input string, inputSet map[string]struct{}) error {
+func (c Converter) markdown(input string, linkMap map[string][]string) error {
 	data, err := os.ReadFile(input)
 	if err != nil {
 		return err
@@ -78,7 +98,7 @@ func (c Converter) markdown(input string, inputSet map[string]struct{}) error {
 
 	// Make a few modifications.
 	data = redact.Redact(input, data, c.Redactions)
-	data = links.Modify(data, inputSet)
+	data = links.Modify(data, linkMap)
 
 	// Convert to html.
 	md := goldmark.New(
@@ -93,10 +113,11 @@ func (c Converter) markdown(input string, inputSet map[string]struct{}) error {
 	}
 
 	// Apply template.
-	name := strings.TrimSuffix(filepath.Base(input), ".md")
+	name := toName(input, c.InDir)
 	page := Page{
 		Filename: name,
 		Content:  buf.String(),
+		From:     linkMap[name],
 	}
 	tmpl, err := template.ParseFS(ui.Files, "main.tmpl")
 	if err != nil {
@@ -114,9 +135,7 @@ func (c Converter) markdown(input string, inputSet map[string]struct{}) error {
 	data = buf.Bytes()
 
 	// Write file.
-	path := strings.TrimPrefix(input, c.InDir)
-	path = filepath.Join(c.OutDir, path)
-	path = strings.TrimSuffix(path, ".md")
+	path := filepath.Join(c.OutDir, toName(input, c.InDir))
 	path = normalize.String(path) + ".html"
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
@@ -137,4 +156,9 @@ func (c Converter) media(input string) error {
 		return err
 	}
 	return os.WriteFile(path, data, 0o644)
+}
+
+func toName(path, inDir string) string {
+	path = strings.TrimSuffix(path, ".md")
+	return strings.TrimPrefix(path, inDir+"/")
 }
