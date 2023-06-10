@@ -206,7 +206,7 @@
 		{{ $first := true }}
 		{{ range $k, $v := .From }}{{ if not $first }},
 		{{ else }}{{ $first = false }}{{ end }}
-		<a href="/{{ $k }}.html">{{ $k }}</a>{{ end }}
+		<a href="/{{ Normalize $k }}.html">{{ $k }}</a>{{ end }}
 	{{ end }}
 	</nav>
 	<article>

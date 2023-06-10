@@ -16,6 +16,8 @@ import (
 	"github.com/yuin/goldmark/extension"
 )
 
+const mainTMPL = "main.tmpl"
+
 // Page holds the information needed to render an individual page.
 type Page struct {
 	// Filename is the name without an extension or full path.
@@ -129,10 +131,14 @@ func (c Converter) markdown(
 		Content:  buf.String(),
 		From:     linkMap[name],
 	}
-	tmpl, err := template.ParseFS(ui.Files, "main.tmpl")
+
+	tmpl, err := template.New(mainTMPL).
+		Funcs(template.FuncMap{"Normalize": normalize.String}).
+		ParseFS(ui.Files, mainTMPL)
 	if err != nil {
 		return fmt.Errorf("failed to load main.tmpl: %v", err)
 	}
+
 	buf.Reset()
 	err = tmpl.Execute(&buf, page)
 	if err != nil {
