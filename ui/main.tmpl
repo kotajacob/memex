@@ -203,8 +203,10 @@
 	{{ if ne .Filename "index" }}{{ .Filename }}{{ end }}
 	{{ if .From }}
 		<
-		{{ range $i, $v := .From }}{{ if $i }},{{ end }}
-			<a href="/{{ $v }}.html">{{ $v }}</a>{{ end }}
+		{{ $first := true }}
+		{{ range $k, $v := .From }}{{ if not $first }},
+		{{ else }}{{ $first = false }}{{ end }}
+		<a href="/{{ $k }}.html">{{ $k }}</a>{{ end }}
 	{{ end }}
 	</nav>
 	<article>

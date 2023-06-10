@@ -17,14 +17,14 @@ var redactExp = regexp.MustCompile(`(?s)REDACT(.*(?:UNREDACT)|.*)`)
 // Some specific file paths (the whole log folder for example) "default" to
 // being redacted. That just means we prepend the REDACT keyword on those files.
 func Redact(path string, s []byte, denylist []string) []byte {
-	if hidden(path, denylist) {
+	if Hidden(path, denylist) {
 		s = append([]byte("REDACT\n"), s...)
 	}
 	return redactExp.ReplaceAllFunc(s, Blackout)
 }
 
-// hidden returns whether or not a path should be redacted by default.
-func hidden(path string, denylist []string) bool {
+// Hidden returns whether or not a path should be redacted by default.
+func Hidden(path string, denylist []string) bool {
 	for _, v := range denylist {
 		if strings.Contains(path, v) {
 			return true

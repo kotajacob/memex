@@ -33,7 +33,7 @@ var matchLinks = regexp.MustCompile(`(?U)!?\[.+\]\(.+\)|!?\[\[.+\]\]`)
 // A link may be prefixed with ! to indicate it is an image.
 func Modify(
 	s []byte,
-	linkMap map[string][]string,
+	linkMap map[string]map[string]struct{},
 ) []byte {
 	m := modifier{
 		linkMap: linkMap,
@@ -42,20 +42,22 @@ func Modify(
 }
 
 type modifier struct {
-	linkMap map[string][]string
+	linkMap map[string]map[string]struct{}
 }
 
 func Map(
 	s []byte,
 	name string,
-	linkMap map[string][]string,
-) map[string][]string {
+	linkMap map[string]map[string]struct{},
+) map[string]map[string]struct{} {
 	matches := matchLinks.FindAll(s, -1)
 	for _, match := range matches {
 		dest, _, form := parseLink(match)
 		if form == wikiLink {
 			d := strings.TrimPrefix(string(dest), "/")
-			linkMap[d] = append(linkMap[d], name)
+			if _, ok := linkMap[d]; ok {
+				linkMap[d][name] = struct{}{}
+			}
 		}
 	}
 	return linkMap

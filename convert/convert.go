@@ -25,7 +25,7 @@ type Page struct {
 	Content string
 
 	// From is a list of other pages that link to this page.
-	From []string
+	From map[string]struct{}
 }
 
 // Converter holds all the information needed to convert a list of input files.
@@ -47,25 +47,29 @@ func (c Converter) All() error {
 	// We need to create a linkMap which maps each page to a list of other
 	// pages which link to it. First we can simply populate the map with all
 	// the names of the markdown pages.
-	linkMap := make(map[string][]string)
+	linkMap := make(map[string]map[string]struct{})
 	for _, input := range c.Inputs {
 		if !strings.HasSuffix(input, ".md") {
 			continue
 		}
-
 		markdowns = append(markdowns, input)
-		linkMap[toName(input, c.InDir)] = []string{}
+		linkMap[toName(input, c.InDir)] = make(map[string]struct{})
 	}
 
 	// Populate the linkMap by writing a list of other pages that link to each
 	// page.
 	for _, input := range markdowns {
+		name := toName(input, c.InDir)
+		if redact.Hidden(name, c.Redactions) {
+			continue
+		}
+
 		data, err := os.ReadFile(input)
 		if err != nil {
 			return err
 		}
 
-		linkMap = links.Map(data, toName(input, c.InDir), linkMap)
+		linkMap = links.Map(data, name, linkMap)
 	}
 
 	for _, input := range c.Inputs {
@@ -79,7 +83,10 @@ func (c Converter) All() error {
 
 // convert will do any needed processing to a source file and then write it to
 // the outDir.
-func (c Converter) convert(input string, linkMap map[string][]string) error {
+func (c Converter) convert(
+	input string,
+	linkMap map[string]map[string]struct{},
+) error {
 	if !strings.HasSuffix(input, ".md") {
 		if err := c.media(input); err != nil {
 			return err
@@ -90,7 +97,10 @@ func (c Converter) convert(input string, linkMap map[string][]string) error {
 }
 
 // markdown handles the conversion and writing of a markdown file.
-func (c Converter) markdown(input string, linkMap map[string][]string) error {
+func (c Converter) markdown(
+	input string,
+	linkMap map[string]map[string]struct{},
+) error {
 	data, err := os.ReadFile(input)
 	if err != nil {
 		return err
