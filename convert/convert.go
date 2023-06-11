@@ -54,6 +54,14 @@ func (c Converter) All() error {
 		if !strings.HasSuffix(input, ".md") {
 			continue
 		}
+
+		if redact.Hidden(
+			strings.TrimPrefix(input, c.InDir+"/"),
+			c.Redactions,
+		) {
+			continue
+		}
+
 		markdowns = append(markdowns, input)
 		linkMap[toName(input, c.InDir)] = make(map[string]struct{})
 	}
@@ -61,16 +69,13 @@ func (c Converter) All() error {
 	// Populate the linkMap by writing a list of other pages that link to each
 	// page.
 	for _, input := range markdowns {
-		name := toName(input, c.InDir)
-		if redact.Hidden(name, c.Redactions) {
-			continue
-		}
 
 		data, err := os.ReadFile(input)
 		if err != nil {
 			return err
 		}
 
+		name := toName(input, c.InDir)
 		linkMap = links.Map(data, name, linkMap)
 	}
 
