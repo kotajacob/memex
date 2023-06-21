@@ -1,11 +1,13 @@
 .POSIX:
 
-include config.mk
+PREFIX ?= /usr/local
+MANPREFIX ?= $(PREFIX)/share/man
+GOFLAGS ?= -buildvcs=false
 
 all: clean build
 
 build:
-	go build ./cmd/memex/ $(GOFLAGS)
+	go build $(GOFLAGS) ./cmd/memex/
 
 test:
 	go test ./...
