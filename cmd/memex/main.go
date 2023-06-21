@@ -31,7 +31,7 @@ func main() {
 		)
 	}
 
-	denylist, err := redact.Load(filepath.Join(inDir, "denylist.md"))
+	denylist, err := redact.Load(filepath.Join(inDir, "redactions.md"))
 	if err != nil {
 		fmt.Fprintf(
 			os.Stderr,
