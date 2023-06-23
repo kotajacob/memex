@@ -28,14 +28,33 @@ type Page struct {
 
 	// From is a list of other pages that link to this page.
 	From map[string]struct{}
+
+	// Favicon is an href for the site's favicon.
+	// It's name contains a hash to allow for immutable caching.
+	Favicon string
+
+	// CSS is an href for the site's CSS.
+	// It's name contains a hash to allow for immutable caching.
+	CSS string
 }
 
 // Converter holds all the information needed to convert a list of input files.
 type Converter struct {
-	Inputs     []string
-	InDir      string
-	OutDir     string
+	Inputs []string
+	InDir  string
+	OutDir string
+
+	// Redactions is a list on substrings which, if matched with a filename,
+	// prevent the file from being exported.
 	Redactions []string
+
+	// Favicon is an href for the site's favicon.
+	// It's name contains a hash to allow for immutable caching.
+	Favicon string
+
+	// CSS is an href for the site's CSS.
+	// It's name contains a hash to allow for immutable caching.
+	CSS string
 }
 
 // All processes a list of input files, cleaning up and converting each one to
@@ -135,6 +154,8 @@ func (c Converter) markdown(
 		Filename: name,
 		Content:  buf.String(),
 		From:     linkMap[name],
+		Favicon:  c.Favicon,
+		CSS:      c.CSS,
 	}
 
 	tmpl, err := template.New(mainTMPL).

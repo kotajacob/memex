@@ -21,6 +21,17 @@ func main() {
 	}
 	inDir, outDir := os.Args[1], os.Args[2]
 
+	staticMap, err := static.Copy(outDir)
+	if err != nil {
+		fmt.Fprintf(
+			os.Stderr,
+			"failed while copying static files: %v\n",
+			err,
+		)
+	}
+	favicon := staticMap["favicon.png"]
+	css := staticMap["main.css"]
+
 	inputs, err := list(inDir)
 	if err != nil {
 		fmt.Fprintf(
@@ -45,6 +56,8 @@ func main() {
 		InDir:      inDir,
 		OutDir:     outDir,
 		Redactions: denylist,
+		Favicon:    favicon,
+		CSS:        css,
 	}
 	err = c.All()
 	if err != nil {
@@ -54,15 +67,5 @@ func main() {
 			err,
 		)
 	}
-
-	err = static.Copy(outDir)
-	if err != nil {
-		fmt.Fprintf(
-			os.Stderr,
-			"failed while copying static files: %v\n",
-			err,
-		)
-	}
-
 	fmt.Println("memex: converted", len(inputs), "files")
 }
