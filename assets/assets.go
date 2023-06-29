@@ -1,4 +1,4 @@
-package static
+package assets
 
 import (
 	"crypto/sha1"
@@ -14,7 +14,7 @@ import (
 // their basename and extension. A map of original names to hash-included names
 // is returned.
 func Copy(outDir string) (map[string]string, error) {
-	entries, err := ui.Files.ReadDir("static")
+	entries, err := ui.Files.ReadDir("assets")
 	if err != nil {
 		return nil, err
 	}
@@ -25,7 +25,7 @@ func Copy(outDir string) (map[string]string, error) {
 			continue
 		}
 
-		data, err := ui.Files.ReadFile(filepath.Join("static", e.Name()))
+		data, err := ui.Files.ReadFile(filepath.Join("assets", e.Name()))
 		if err != nil {
 			return nil, err
 		}

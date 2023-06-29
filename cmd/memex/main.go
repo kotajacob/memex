@@ -5,9 +5,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"git.sr.ht/~kota/memex/assets"
 	"git.sr.ht/~kota/memex/convert"
 	"git.sr.ht/~kota/memex/redact"
-	"git.sr.ht/~kota/memex/static"
 )
 
 func usage() {
@@ -21,7 +21,7 @@ func main() {
 	}
 	inDir, outDir := os.Args[1], os.Args[2]
 
-	staticMap, err := static.Copy(outDir)
+	am, err := assets.Copy(outDir)
 	if err != nil {
 		fmt.Fprintf(
 			os.Stderr,
@@ -29,8 +29,8 @@ func main() {
 			err,
 		)
 	}
-	favicon := staticMap["favicon.png"]
-	css := staticMap["main.css"]
+	favicon := am["favicon.png"]
+	css := am["main.css"]
 
 	inputs, err := list(inDir)
 	if err != nil {
