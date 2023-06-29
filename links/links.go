@@ -53,12 +53,14 @@ func Map(
 	matches := matchLinks.FindAll(s, -1)
 	for _, match := range matches {
 		dest, _, form := parseLink(match)
-		if form == wikiLink {
-			d := strings.TrimPrefix(string(dest), "/")
-			if _, ok := linkMap[d]; ok {
-				linkMap[d][name] = struct{}{}
-			}
+		if form != wikiLink {
+			continue
 		}
+		d := strings.TrimPrefix(string(dest), "/")
+		if _, ok := linkMap[d]; !ok {
+			continue
+		}
+		linkMap[d][name] = struct{}{}
 	}
 	return linkMap
 }
