@@ -1,4 +1,4 @@
-package main
+package convert
 
 import (
 	"os"
@@ -6,15 +6,15 @@ import (
 	"strings"
 )
 
-// list recursively finds all non-hidden files in a directory returning either a
-// full list or an error.
-func list(name string) ([]string, error) {
+// List recursively finds all non-hidden and non-empty Files in a directory
+// returning either a full list or an error.
+func List(name string) ([]File, error) {
 	entries, err := os.ReadDir(name)
 	if err != nil {
 		return nil, err
 	}
 
-	var paths []string
+	var files []File
 	for _, e := range entries {
 		// Ignore hidden.
 		if strings.HasPrefix(e.Name(), ".") {
@@ -31,14 +31,20 @@ func list(name string) ([]string, error) {
 		}
 
 		if e.IsDir() {
-			subPaths, err := list(path.Join(name, e.Name()))
+			subPaths, err := List(path.Join(name, e.Name()))
 			if err != nil {
 				return nil, err
 			}
-			paths = append(paths, subPaths...)
+			files = append(files, subPaths...)
 		} else {
-			paths = append(paths, path.Join(name, e.Name()))
+			files = append(
+				files,
+				File{
+					Path:    path.Join(name, e.Name()),
+					ModTime: info.ModTime(),
+				},
+			)
 		}
 	}
-	return paths, nil
+	return files, nil
 }

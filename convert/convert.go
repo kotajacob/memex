@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 
 	"git.sr.ht/~kota/memex/links"
 	"git.sr.ht/~kota/memex/normalize"
@@ -38,9 +39,14 @@ type Page struct {
 	CSS string
 }
 
+// File holds information about a file on disk.
+type File struct {
+	Path    string
+	ModTime time.Time
+}
+
 // Converter holds all the information needed to convert a list of input files.
 type Converter struct {
-	Inputs []string
 	InDir  string
 	OutDir string
 
@@ -57,49 +63,49 @@ type Converter struct {
 	CSS string
 }
 
-// All processes a list of input files, cleaning up and converting each one to
+// All processes a list of input Files, cleaning up and converting each one to
 // html and writing the final output into the outDir. The inDir portion of
 // each filepath is replaced with outDir; so subdirectory structures remain
 // unchanged.
-func (c Converter) All() error {
-	var mediaFiles []string
-	var markdownFiles []string
+func (c Converter) All(files []File) error {
+	var mediaFiles []File
+	var markdownFiles []File
 	linkMap := make(map[string]map[string]struct{})
-	for _, i := range c.Inputs {
-		if !strings.HasSuffix(i, ".md") {
-			mediaFiles = append(mediaFiles, i)
+	for _, f := range files {
+		if !strings.HasSuffix(f.Path, ".md") {
+			mediaFiles = append(mediaFiles, f)
 			continue
 		}
 
 		if redact.Hidden(
-			strings.TrimPrefix(i, c.InDir+"/"),
+			strings.TrimPrefix(f.Path, c.InDir+"/"),
 			c.Redactions,
 		) {
 			continue
 		}
 
-		markdownFiles = append(markdownFiles, i)
-		linkMap[toName(i, c.InDir)] = make(map[string]struct{})
+		markdownFiles = append(markdownFiles, f)
+		linkMap[toName(f.Path, c.InDir)] = make(map[string]struct{})
 	}
 
-	for _, i := range markdownFiles {
-		data, err := os.ReadFile(i)
+	for _, f := range markdownFiles {
+		data, err := os.ReadFile(f.Path)
 		if err != nil {
 			return err
 		}
 
-		name := toName(i, c.InDir)
+		name := toName(f.Path, c.InDir)
 		linkMap = links.Map(data, name, linkMap)
 	}
 
-	for _, i := range mediaFiles {
-		if err := c.media(i); err != nil {
+	for _, f := range mediaFiles {
+		if err := c.media(f); err != nil {
 			return err
 		}
 	}
 
-	for _, i := range markdownFiles {
-		if err := c.markdown(i, linkMap); err != nil {
+	for _, f := range markdownFiles {
+		if err := c.markdown(f.Path, linkMap); err != nil {
 			return err
 		}
 	}
@@ -170,18 +176,26 @@ func (c Converter) markdown(
 }
 
 // media copies a media file from inDir to the outDir.
-func (c Converter) media(input string) error {
-	data, err := os.ReadFile(input)
+func (c Converter) media(f File) error {
+	outPath := strings.TrimPrefix(f.Path, c.InDir)
+	outPath = filepath.Join(c.OutDir, outPath)
+
+	// Skip if the output file is newer than the input file.
+	if info, err := os.Stat(outPath); err == nil {
+		if info.ModTime().After(f.ModTime) {
+			return nil
+		}
+	}
+
+	data, err := os.ReadFile(f.Path)
 	if err != nil {
 		return err
 	}
 
-	path := strings.TrimPrefix(input, c.InDir)
-	path = filepath.Join(c.OutDir, path)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	return os.WriteFile(outPath, data, 0o644)
 }
 
 func toName(path, inDir string) string {

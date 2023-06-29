@@ -32,7 +32,7 @@ func main() {
 	favicon := am["favicon.png"]
 	css := am["main.css"]
 
-	inputs, err := list(inDir)
+	files, err := convert.List(inDir)
 	if err != nil {
 		fmt.Fprintf(
 			os.Stderr,
@@ -52,14 +52,13 @@ func main() {
 		)
 	}
 	c := convert.Converter{
-		Inputs:     inputs,
 		InDir:      inDir,
 		OutDir:     outDir,
 		Redactions: denylist,
 		Favicon:    favicon,
 		CSS:        css,
 	}
-	err = c.All()
+	err = c.All(files)
 	if err != nil {
 		fmt.Fprintf(
 			os.Stderr,
@@ -67,5 +66,5 @@ func main() {
 			err,
 		)
 	}
-	fmt.Println("memex: converted", len(inputs), "files")
+	fmt.Println("memex: converted", len(files), "files")
 }
