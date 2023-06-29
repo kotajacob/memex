@@ -62,64 +62,48 @@ type Converter struct {
 // each filepath is replaced with outDir; so subdirectory structures remain
 // unchanged.
 func (c Converter) All() error {
-	// Filter a list of markdown files.
-	var markdowns []string
-
-	// We need to create a linkMap which maps each page to a list of other
-	// pages which link to it. First we can simply populate the map with all
-	// the names of the markdown pages.
+	var mediaFiles []string
+	var markdownFiles []string
 	linkMap := make(map[string]map[string]struct{})
-	for _, input := range c.Inputs {
-		if !strings.HasSuffix(input, ".md") {
+	for _, i := range c.Inputs {
+		if !strings.HasSuffix(i, ".md") {
+			mediaFiles = append(mediaFiles, i)
 			continue
 		}
 
 		if redact.Hidden(
-			strings.TrimPrefix(input, c.InDir+"/"),
+			strings.TrimPrefix(i, c.InDir+"/"),
 			c.Redactions,
 		) {
 			continue
 		}
 
-		markdowns = append(markdowns, input)
-		linkMap[toName(input, c.InDir)] = make(map[string]struct{})
+		markdownFiles = append(markdownFiles, i)
+		linkMap[toName(i, c.InDir)] = make(map[string]struct{})
 	}
 
-	// Populate the linkMap by writing a list of other pages that link to each
-	// page.
-	for _, input := range markdowns {
-
-		data, err := os.ReadFile(input)
+	for _, i := range markdownFiles {
+		data, err := os.ReadFile(i)
 		if err != nil {
 			return err
 		}
 
-		name := toName(input, c.InDir)
+		name := toName(i, c.InDir)
 		linkMap = links.Map(data, name, linkMap)
 	}
 
-	for _, input := range c.Inputs {
-		err := c.convert(input, linkMap)
-		if err != nil {
+	for _, i := range mediaFiles {
+		if err := c.media(i); err != nil {
+			return err
+		}
+	}
+
+	for _, i := range markdownFiles {
+		if err := c.markdown(i, linkMap); err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-// convert will do any needed processing to a source file and then write it to
-// the outDir.
-func (c Converter) convert(
-	input string,
-	linkMap map[string]map[string]struct{},
-) error {
-	if !strings.HasSuffix(input, ".md") {
-		if err := c.media(input); err != nil {
-			return err
-		}
-		return nil
-	}
-	return c.markdown(input, linkMap)
 }
 
 // markdown handles the conversion and writing of a markdown file.
